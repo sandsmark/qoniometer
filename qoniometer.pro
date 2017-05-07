@@ -10,9 +10,15 @@ TARGET = qoniometer
 TEMPLATE = app
 
 CONFIG += c++11
+CONFIG += optimize_full
 
 
-SOURCES += main.cpp\
+SOURCES += main.cpp \
+        pulseaudiomonitor.cpp \
         widget.cpp
 
-HEADERS  += widget.h
+HEADERS  += widget.h \
+        pulseaudiomonitor.h \
+        inlinehsv.h
+
+LIBS += -lpulse-simple -lpulse
