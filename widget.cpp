@@ -181,8 +181,6 @@ void Widget::doColors()
 
         const float ay = left - right;
         const float ax = left + right;
-        const float x = centerX - qSqrt(qAbs(ax)) * scale * ax/qAbs(ax);
-        const float y = centerY - qSqrt(qAbs(ay)) * scale * ay/qAbs(ay);
 
         //const float x = centerX - ax * scale;
         //const float y = centerY - ay * scale;
@@ -190,12 +188,12 @@ void Widget::doColors()
         //const float x = centerX - scale / ax;
         //const float y = centerY - scale / ay;
         //const float y = centerY - ay * height() * 2.;
-        if (i > 1) {
+        if (Q_LIKELY(i > 1)) {
             const float incre = i * 359 / sampleCount;
-            const float speed = qBound(0.f, (qAbs(ay - lastY) + qAbs(ax - lastX)) + 0.75f, 1.f);
-            const float speed2 = qBound(0.f, (qAbs(ay - lastY) + qAbs(ax - lastX)), 1.f);
+            const float speed = qBound(0.f, (std::abs(ay - lastY) + std::abs(ax - lastX)) + 0.75f, 1.f);
+            const float speed2 = qBound(0.f, (std::abs(ay - lastY) + std::abs(ax - lastX)), 1.f);
             //const float tres = sin(ax) * cos(speed2);
-            const float distance = 1.0f  - qBound(0.f, (qAbs(ay) + qAbs(ax)), 1.f);
+            const float distance = 1.0f  - qBound(0.f, (std::abs(ay) + std::abs(ax)), 1.f);
             //const float distance = 1. - qBound(0., qSqrt((ax + 1.) * (ax + 1.) + (ay + 1.) * (ay + 1.)), 1.);
             hsv.convertHSV2RGB(incre, speed * 128.f + 128.f, qPow(distance, 1.5) * speed * 255.f);
             //hsv.convertHSV2RGB(incre, speed * 128.f + 128.f, speed * 192.f + 64.f);
@@ -212,6 +210,8 @@ void Widget::doColors()
 //            pen.setWidth(qBound(1.f, qAbs(ax - lastX) * scale + qAbs(ay - lastY) * scale / 100.f, 30.f));
             painter.setPen(pen);
 //            painter.drawPoint(x, y);
+            const float x = centerX - qSqrt(std::abs(ax)) * scale * ax/std::abs(ax);
+            const float y = centerY - qSqrt(std::abs(ay)) * scale * ay/std::abs(ay);
             painter.drawPoint(x, y);
 //            painter.drawLine(lastX, lastY, x, y);
         }
