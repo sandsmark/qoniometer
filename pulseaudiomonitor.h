@@ -30,6 +30,8 @@ public:
      ~PulseAudioMonitor();
 
     QMutex m_mutex;
+    //uint16_t m_left[BUFSIZE];
+    //uint16_t m_right[BUFSIZE];
     float m_left[BUFSIZE];
     float m_right[BUFSIZE];
     int currentPos = 0;

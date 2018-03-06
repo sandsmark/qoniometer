@@ -19,10 +19,10 @@ void PulseAudioMonitor::run()
 
     pa_sample_spec ss;
 
-    ss.format = PA_SAMPLE_FLOAT32LE;
-//    ss.format = PA_SAMPLE_S16LE;
+    //ss.format = PA_SAMPLE_FLOAT32LE;
+    ss.format = PA_SAMPLE_S16LE;
     ss.channels = 2;
-//    ss.rate = 44800;
+    //ss.rate = 44800;
 //    ss.rate = BUFSIZE * ;
     ss.rate = 44100;
 
@@ -46,8 +46,11 @@ void PulseAudioMonitor::run()
     }
 
     const int samplesPerUpdate = ba.fragsize/pa_sample_size(&ss);
-    float buffer[samplesPerUpdate];
+    qWarning() << "Samples per update:" << samplesPerUpdate;
+    uint16_t buffer[samplesPerUpdate];
+    //float buffer[samplesPerUpdate];
 
+    int j=0;
     while (running) {
         /* Record some data ... */
         if (pa_simple_read(s, buffer, sizeof(buffer), &error) < 0) {
@@ -57,10 +60,11 @@ void PulseAudioMonitor::run()
         }
 
         m_mutex.lock();
-        for (int i=0, j=0; i < samplesPerUpdate - 1; i+=2) {
-            m_left[j] = buffer[i];
-            m_right[j] = buffer[i+1];
+        for (int i=0; i < samplesPerUpdate - 1; i+=2) {
+            m_left[j] = buffer[i] / float(INT16_MAX);
+            m_right[j] = buffer[i+1] / float(INT16_MAX);
             j++;
+            j %= BUFSIZE;
         }
         m_mutex.unlock();
     }

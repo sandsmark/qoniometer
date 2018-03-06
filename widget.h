@@ -13,6 +13,7 @@ class Widget : public QOpenGLWidget
         Lines,
         Splines,
         Colors,
+        Out,
         EffectCount
     };
 
@@ -26,6 +27,7 @@ protected:
     virtual void keyPressEvent(QKeyEvent *);
 
 private:
+    void doOut();
     void doDots();
     void doLines();
     void doColors();

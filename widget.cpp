@@ -12,7 +12,7 @@
 
 Widget::Widget(QWidget *parent)
     : QOpenGLWidget(parent),
-      m_currentEffect(Colors),
+      m_currentEffect(Out),
 //      m_currentEffect(Dots),
       m_ghost(32)
 {
@@ -34,6 +34,9 @@ Widget::~Widget()
 void Widget::paintEvent(QPaintEvent *)
 {
     switch(m_currentEffect) {
+    case Out:
+        doOut();
+        break;
     case Dots:
         doDots();
         break;
@@ -70,6 +73,48 @@ void Widget::keyPressEvent(QKeyEvent *event)
     }
 }
 
+void Widget::doOut()
+{
+    QElapsedTimer timer;
+    timer.start();
+
+    QPainter painter(this);
+
+    painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(QColor(255, 255, 255, 32), 1, Qt::SolidLine, Qt::RoundCap));
+
+    const int centerX = width() / 2;
+    const int centerY = height() / 2;
+    const int scale = qMin(height(), width());
+    m_monitor.m_mutex.lock();
+    const int samplecount = sizeof(m_monitor.m_left)/sizeof(m_monitor.m_left[0]);
+    for (int i=0; i<samplecount; i++) {
+        const float left = m_monitor.m_left[i];
+        const float right = m_monitor.m_right[i];
+
+
+        const float ay = left - right;
+        const float ax = left + right;
+        const float ang = atan2(ay, ax);
+
+        const float x = centerX - ax * scale;
+        const float y = centerY - ay * height();
+        const float nx = x + cos(ang) * std::hypot(ax, ay) * 100;
+        const float ny = y + sin(ang) * std::hypot(ax, ay) * 100;
+        //painter.setPen(QPen(QColor(255, 255, 255, (pow(ax, 2) + pow(ay, 2)) * 128), 1, Qt::SolidLine, Qt::RoundCap));
+        //painter.setPen(QPen(QColor(255, 255, 255, std::hypot(ax, ay) * 255), 1, Qt::SolidLine, Qt::RoundCap));
+        //painter.setOpacity(std::hypot(x, y) ? std::hypot(x, y) / height() : 0.);
+        if (i > 1) {
+            painter.drawLine(x, y, nx, ny);
+        }
+        //lastX = x;
+        //lastY = y;
+    }
+    m_monitor.m_mutex.unlock();
+
+}
+
 void Widget::doDots()
 {
     QElapsedTimer timer;
@@ -99,7 +144,6 @@ void Widget::doDots()
     for (int i=0; i<samplecount; i++) {
         const float left = m_monitor.m_left[i];
         const float right = m_monitor.m_right[i];
-
 
         const float ay = left - right;
         const float ax = left + right;
@@ -134,10 +178,18 @@ void Widget::doLines()
     const int scale = qMin(height(), width());
     m_monitor.m_mutex.lock();
     const int samplecount = sizeof(m_monitor.m_left)/sizeof(m_monitor.m_left[0]);
-    for (int i=0; i<samplecount; i++) {
+    for (int i=1; i<samplecount; i+=2) {
+        const float pleft = m_monitor.m_left[i-1];
+        const float pright = m_monitor.m_right[i-1];
+
         const float left = m_monitor.m_left[i];
         const float right = m_monitor.m_right[i];
 
+
+        const float pay = pleft - pright;
+        const float pax = pleft + pright;
+        const float px = centerX - pax * scale;
+        const float py = centerY - pay * scale;
 
         const float ay = left - right;
         const float ax = left + right;
@@ -145,7 +197,7 @@ void Widget::doLines()
         const float y = centerY - ay * scale;
         if (i > 1) {
             painter.setPen(QPen(QColor(255, 255, 255, 32), 10 - 10 * qMax(qAbs(ax), qAbs(ay))));
-            painter.drawLine(lastX, lastY, x, y);
+            painter.drawLine(px, py, x, y);
         }
         lastX = x;
         lastY = y;
@@ -225,7 +277,7 @@ void Widget::doSplines()
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(255, 255, 255, 255 ), 1));
+    painter.setPen(QPen(QColor(255, 255, 255, 64 ), 1));
     painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
 
     const int centerX = width() / 2;
@@ -235,11 +287,11 @@ void Widget::doSplines()
     QPainterPath path;
     path.moveTo(centerX, centerY);
     const int samplecount = sizeof(m_monitor.m_left)/sizeof(m_monitor.m_left[0]);
-    for (int i=0; i<samplecount-1; i+=2) {
+    for (int i=1; i<samplecount; i+=2) {
         const float left = m_monitor.m_left[i];
         const float right = m_monitor.m_right[i];
-        const float leftNext = m_monitor.m_left[i+1];
-        const float rightNext = m_monitor.m_right[i+1];
+        const float leftPrev = m_monitor.m_left[i-1];
+        const float rightPrev = m_monitor.m_right[i-1];
 
 
         const float ax = left + right;
@@ -248,12 +300,15 @@ void Widget::doSplines()
         //const float y = centerY - ay * scale;
         const float y = centerY - ay * height() * 1.1;
 
-        const float axNext = leftNext + rightNext;
-        const float ayNext = leftNext - rightNext;
-        const float xNext = centerX - axNext * scale;
-        const float yNext = centerY - ayNext * scale;
+        const float axPrev = leftPrev + rightPrev;
+        const float ayPrev = leftPrev - rightPrev;
+        const float xPrev = centerX - axPrev * scale;
+        const float yPrev = centerY - ayPrev * scale;
 
-        path.quadTo(x, y, xNext, yNext);
+        const float halfPrevX = (x - xPrev) / 2. + xPrev;
+        const float halfPrevY = (y - yPrev) / 2. + yPrev;
+
+        path.quadTo(xPrev, yPrev, halfPrevX, halfPrevY);
     }
     painter.drawPath(path);
     m_monitor.m_mutex.unlock();
