@@ -82,7 +82,7 @@ void Widget::doOut()
 
     painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(255, 255, 255, 32), 1, Qt::SolidLine, Qt::RoundCap));
+    painter.setPen(QPen(QColor(255, 255, 255, 64), 1, Qt::SolidLine, Qt::RoundCap));
 
     const int centerX = width() / 2;
     const int centerY = height() / 2;
@@ -99,7 +99,7 @@ void Widget::doOut()
         const float ang = atan2(ay, ax);
 
         const float x = centerX - ax * scale;
-        const float y = centerY - ay * height();
+        const float y = centerY - ay * scale;
         const float nx = x + cos(ang) * std::hypot(ax, ay) * 100;
         const float ny = y + sin(ang) * std::hypot(ax, ay) * 100;
         //painter.setPen(QPen(QColor(255, 255, 255, (pow(ax, 2) + pow(ay, 2)) * 128), 1, Qt::SolidLine, Qt::RoundCap));
