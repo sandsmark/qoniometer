@@ -8,27 +8,42 @@
 #include <QTimer>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QApplication>
+#include <QDesktopWidget>
 #include "inlinehsv.h"
 
-Widget::Widget(QWidget *parent)
-    : QOpenGLWidget(parent),
+Widget::Widget(QWidget *parent) :
       m_currentEffect(Out),
 //      m_currentEffect(Dots),
-      m_ghost(32)
+      m_ghost(128)
 {
-    setWindowFlags(Qt::Dialog);
+    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus | Qt::WindowTransparentForInput);
+    setAttribute(Qt::WA_TranslucentBackground);
     resize(640, 480);
     QTimer *repaintTimer = new QTimer(this);
     repaintTimer->setInterval(50);
     //repaintTimer->setInterval(50);
     connect(repaintTimer, SIGNAL(timeout()), this, SLOT(update()));
     repaintTimer->start();
+    updatePosition();
 
     m_monitor.start();
+    connect(qApp->desktop(), &QDesktopWidget::screenCountChanged, this, &Widget::updatePosition);
+    connect(qApp->desktop(), &QDesktopWidget::resized, this, &Widget::updatePosition);
 }
 
 Widget::~Widget()
 {
+}
+
+void Widget::updatePosition()
+{
+    int offset = qApp->desktop()->availableGeometry(qApp->desktop()->screenCount() - 1).width() - width() - 10;
+    for (int screen = 1; screen < qApp->desktop()->screenCount(); screen++) {
+        offset += qApp->desktop()->availableGeometry(screen).width();
+    }
+
+    move(offset, 0);
 }
 
 void Widget::paintEvent(QPaintEvent *)
@@ -56,7 +71,7 @@ void Widget::paintEvent(QPaintEvent *)
 
 void Widget::resizeEvent(QResizeEvent *event)
 {
-    QOpenGLWidget::resizeEvent(event);
+    //QOpenGLWidget::resizeEvent(event);
     update();
 }
 
@@ -80,18 +95,54 @@ void Widget::doOut()
 
     QPainter painter(this);
 
-    painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(255, 255, 255, 64), 1, Qt::SolidLine, Qt::RoundCap));
+    //painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.fillRect(rect(), Qt::transparent);
+    //painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
 
-    const int centerX = width() / 2;
-    const int centerY = height() / 2;
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    //painter.setCompositionMode(QPainter::CompositionMode_Difference);
+
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(QColor(0, 0, 0, 64), 3));
+
+    const int centerX = 3 * width() / 4;
+    const int centerY = height() / 4;
     const int scale = qMin(height(), width());
     m_monitor.m_mutex.lock();
     const int samplecount = sizeof(m_monitor.m_left)/sizeof(m_monitor.m_left[0]);
     for (int i=0; i<samplecount; i++) {
-        const float left = m_monitor.m_left[i];
-        const float right = m_monitor.m_right[i];
+        int posToRead = i + m_monitor.currentPos;
+        posToRead %= samplecount;
+        const float left = m_monitor.m_left[posToRead];
+        const float right = m_monitor.m_right[posToRead];
+
+
+        const float ay = left - right;
+        const float ax = left + right;
+        const float ang = atan2(ay, ax);
+
+        const float x = centerX - ax * scale;
+        const float y = centerY - ay * scale;
+        const float nx = x + cos(ang) * std::hypot(ax, ay) * 100;
+        const float ny = y + sin(ang) * std::hypot(ax, ay) * 100;
+        //painter.setPen(QPen(QColor(255, 255, 255, (pow(ax, 2) + pow(ay, 2)) * 128), 1, Qt::SolidLine, Qt::RoundCap));
+        //painter.setPen(QPen(QColor(255, 255, 255, std::hypot(ax, ay) * 255), 1, Qt::SolidLine, Qt::RoundCap));
+        //painter.setOpacity(std::hypot(x, y) ? std::hypot(x, y) / height() : 0.);
+        if (i > 1) {
+            painter.drawLine(x, y, nx, ny);
+        }
+        //lastX = x;
+        //lastY = y;
+    }
+
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    painter.setPen(QPen(QColor(255, 255, 255, 64), 1));
+
+    for (int i=0; i<samplecount; i++) {
+        int posToRead = i + m_monitor.currentPos;
+        posToRead %= samplecount;
+        const float left = m_monitor.m_left[posToRead];
+        const float right = m_monitor.m_right[posToRead];
 
 
         const float ay = left - right;
@@ -277,7 +328,7 @@ void Widget::doSplines()
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(255, 255, 255, 64 ), 1));
+    painter.setPen(QPen(QColor(255, 255, 255, 192 ), 0.1));
     painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
 
     const int centerX = width() / 2;
@@ -285,8 +336,9 @@ void Widget::doSplines()
     const int scale = qMin(height(), width());
     m_monitor.m_mutex.lock();
     QPainterPath path;
-    path.moveTo(centerX, centerY);
+    //path.moveTo(centerX, centerY);
     const int samplecount = sizeof(m_monitor.m_left)/sizeof(m_monitor.m_left[0]);
+
     for (int i=1; i<samplecount; i+=2) {
         const float left = m_monitor.m_left[i];
         const float right = m_monitor.m_right[i];
@@ -297,8 +349,8 @@ void Widget::doSplines()
         const float ax = left + right;
         const float ay = left - right;
         const float x = centerX - ax * scale;
-        //const float y = centerY - ay * scale;
-        const float y = centerY - ay * height() * 1.1;
+        const float y = centerY - ay * scale;
+        //const float y = centerY - ay * height() * 1.1;
 
         const float axPrev = leftPrev + rightPrev;
         const float ayPrev = leftPrev - rightPrev;
@@ -308,7 +360,11 @@ void Widget::doSplines()
         const float halfPrevX = (x - xPrev) / 2. + xPrev;
         const float halfPrevY = (y - yPrev) / 2. + yPrev;
 
-        path.quadTo(xPrev, yPrev, halfPrevX, halfPrevY);
+        if (i < 2) {
+            path.moveTo(x, y);
+        } else {
+            path.quadTo(xPrev, yPrev, halfPrevX, halfPrevY);
+        }
     }
     painter.drawPath(path);
     m_monitor.m_mutex.unlock();

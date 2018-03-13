@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     QSurfaceFormat fmt;
-    fmt.setSamples(2);
+    fmt.setSamples(16);
     QSurfaceFormat::setDefaultFormat(fmt);
 
     Widget w;

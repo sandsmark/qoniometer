@@ -50,7 +50,6 @@ void PulseAudioMonitor::run()
     //uint16_t buffer[samplesPerUpdate];
     float buffer[samplesPerUpdate];
 
-    int j=0;
     while (running) {
         /* Record some data ... */
         if (pa_simple_read(s, buffer, sizeof(buffer), &error) < 0) {
@@ -61,10 +60,10 @@ void PulseAudioMonitor::run()
 
         m_mutex.lock();
         for (int i=0; i < samplesPerUpdate - 1; i+=2) {
-            m_left[j] = buffer[i];// / float(INT16_MAX);
-            m_right[j] = buffer[i+1];// / float(INT16_MAX);
-            j++;
-            j %= BUFSIZE;
+            m_left[currentPos] = buffer[i];// / float(INT16_MAX);
+            m_right[currentPos] = buffer[i+1];// / float(INT16_MAX);
+            currentPos++;
+            currentPos %= BUFSIZE;
         }
         m_mutex.unlock();
     }

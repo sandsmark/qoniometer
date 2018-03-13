@@ -32,8 +32,8 @@ public:
     QMutex m_mutex;
     //uint16_t m_left[BUFSIZE];
     //uint16_t m_right[BUFSIZE];
-    float m_left[BUFSIZE];
-    float m_right[BUFSIZE];
+    std::array<float, BUFSIZE> m_left;
+    std::array<float, BUFSIZE> m_right;
     int currentPos = 0;
 
 public:
