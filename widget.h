@@ -5,7 +5,8 @@
 #include <QMultiMap>
 #include "pulseaudiomonitor.h"
 
-class Widget : public QOpenGLWidget
+//class Widget : public QOpenGLWidget
+class Widget : public QWidget
 {
     Q_OBJECT
     enum Effect {

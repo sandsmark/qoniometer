@@ -8,16 +8,29 @@
 #include <QTimer>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QApplication>
+#include <QDesktopWidget>
 #include "inlinehsv.h"
 
 Widget::Widget(QWidget *parent)
-    : QOpenGLWidget(parent),
+    //: QOpenGLWidget(parent),
+    : QWidget(parent),
       m_currentEffect(Colors),
 //      m_currentEffect(Dots),
       m_ghost(32)
 {
-    setWindowFlags(Qt::Dialog);
+    setAutoFillBackground(false);
+    setWindowFlags(Qt::X11BypassWindowManagerHint | Qt::WindowTransparentForInput);
+    //setWindowFlags(Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowTransparentForInput);
+    //setWindowFlags(Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus | Qt::Tool | Qt::WindowTransparentForInput);
+    //setWindowFlags(Qt::Dialog | Qt::X11BypassWindowManagerHint | Qt::Tool);
+    setAttribute(Qt::WA_TranslucentBackground);
+    setAttribute(Qt::WA_X11NetWmWindowTypeDND);
+    //setAttribute(Qt::WA_TransparentForMouseEvents);
+    //setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint);
+    QRect desktopRect(qApp->desktop()->availableGeometry(this));
     resize(640, 480);
+    move(desktopRect.x() + desktopRect.width() - width(), 0);
     QTimer *repaintTimer = new QTimer(this);
     repaintTimer->setInterval(50);
     //repaintTimer->setInterval(50);
@@ -53,7 +66,8 @@ void Widget::paintEvent(QPaintEvent *)
 
 void Widget::resizeEvent(QResizeEvent *event)
 {
-    QOpenGLWidget::resizeEvent(event);
+    QWidget::resizeEvent(event);
+    //QOpenGLWidget::resizeEvent(event);
     update();
 }
 
@@ -80,9 +94,10 @@ void Widget::doDots()
     //newBuf.fill(Qt::transparent);
     //QPainter painter(&newBuf);
     //painter.setCompositionMode(QPainter::CompositionMode_Source);
-    painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
+    //painter.fillRect(rect(), QColor(0, 0, 0, 0));
+    //painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(255, 255, 255 ), 10, Qt::SolidLine, Qt::RoundCap));
+    painter.setPen(QPen(QColor(255, 255, 255 ), 1, Qt::SolidLine, Qt::RoundCap));
 
     //float lastX, lastY;
 //    gmringbuf *ringBuffer = m_monitor.getBuf();
@@ -104,7 +119,7 @@ void Widget::doDots()
         const float ay = left - right;
         const float ax = left + right;
         const float x = centerX - ax * scale;
-        const float y = centerY - ay * height() * 1.3;
+        const float y = centerY - ay * height();
         if (i > 1) {
 //            painter.drawLine(lastX, lastY, x, y);
             painter.drawPoint(x, y);
@@ -158,7 +173,7 @@ void Widget::doColors()
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(QPen(QColor(255, 255, 255), 5));
-    painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
+    //painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
 
     float lastX, lastY;
     const int centerX = width() / 2;

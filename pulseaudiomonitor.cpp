@@ -22,9 +22,9 @@ void PulseAudioMonitor::run()
     ss.format = PA_SAMPLE_FLOAT32LE;
 //    ss.format = PA_SAMPLE_S16LE;
     ss.channels = 2;
-//    ss.rate = 44800;
+    ss.rate = 44800;
 //    ss.rate = BUFSIZE * ;
-    ss.rate = 44100;
+    //ss.rate = 44100;
 
     pa_simple *s = NULL;
     int error;

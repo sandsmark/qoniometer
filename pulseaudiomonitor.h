@@ -14,7 +14,7 @@
 
 #include <QThread>
 
-#define BUFSIZE (1024*2)
+#define BUFSIZE (1024*1)
 //#define BUFSIZE 4096
 //#define BUFSIZE 5600
 //#define BUFSIZE (8192)
