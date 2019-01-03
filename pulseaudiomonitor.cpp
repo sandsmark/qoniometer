@@ -62,6 +62,7 @@ void PulseAudioMonitor::run()
             m_right[j] = buffer[i+1];
             j++;
         }
+        modified = true;
         m_mutex.unlock();
     }
 

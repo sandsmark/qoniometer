@@ -19,7 +19,7 @@ Widget::Widget(QWidget *parent)
 //      m_currentEffect(Dots),
       m_ghost(32)
 {
-    setAutoFillBackground(false);
+    //setAutoFillBackground(false);
     setWindowFlags(Qt::X11BypassWindowManagerHint | Qt::WindowTransparentForInput);
     //setWindowFlags(Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowTransparentForInput);
     //setWindowFlags(Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus | Qt::Tool | Qt::WindowTransparentForInput);
@@ -29,7 +29,7 @@ Widget::Widget(QWidget *parent)
     //setAttribute(Qt::WA_TransparentForMouseEvents);
     //setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint);
     QRect desktopRect(qApp->desktop()->availableGeometry(this));
-    resize(640, 480);
+    resize(200, 200);
     move(desktopRect.x() + desktopRect.width() - width(), 0);
     QTimer *repaintTimer = new QTimer(this);
     repaintTimer->setInterval(50);
@@ -46,6 +46,9 @@ Widget::~Widget()
 
 void Widget::paintEvent(QPaintEvent *)
 {
+    if (!m_monitor.modified) {
+        return;
+    }
     switch(m_currentEffect) {
     case Dots:
         doDots();
@@ -171,9 +174,11 @@ void Widget::doLines()
 void Widget::doColors()
 {
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(255, 255, 255), 5));
+    //painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
     //painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
+    //painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.setRenderHint(QPainter::Antialiasing);
+    //painter.setPen(QPen(QColor(255, 255, 255), 5));
 
     float lastX, lastY;
     const int centerX = width() / 2;
@@ -215,7 +220,7 @@ void Widget::doColors()
             hsv.convertHSV2RGB(incre, speed * 128.f + 128.f, qPow(distance, 1.5) * speed * 255.f);
             //hsv.convertHSV2RGB(incre, speed * 128.f + 128.f, speed * 192.f + 64.f);
 //            hsv.convertHSV2RGB(incre, speed, speed2);
-            pen.setColor(qRgb(hsv.red(), hsv.green(), hsv.blue()));
+            pen.setColor(qRgba(hsv.red(), hsv.green(), hsv.blue(), 128));
             //pen.setColor(qRgba(hsv.red(), hsv.green(), hsv.blue(), 255 - 255 * distance));
 //            pen.setColor(QColor::fromHsv(incre, speed, speed2, 128));
 
@@ -223,7 +228,7 @@ void Widget::doColors()
 //            pen.setColor(QColor::fromHsv(, 255, qBound(0.f, qAbs(y - lastY) + qAbs(x - lastX), 255.f)));
 //            pen.setColor(QColor::fromHsv(qAbs(ay) * 255, qAbs(ax) * 255, 255.0 * qSqrt(ax * ax + ay*ay)));
 //            pen.setWidth(qMax(50.0 * qSqrt(ax * ax + ay*ay), 1.));
-            pen.setWidth(qBound(1.f, speed2 * scale / 10.f, 30.f));
+            pen.setWidth(qBound(1.5f, speed2 * scale / 10.f, 100.f));
 //            pen.setWidth(qBound(1.f, qAbs(ax - lastX) * scale + qAbs(ay - lastY) * scale / 100.f, 30.f));
             painter.setPen(pen);
 //            painter.drawPoint(x, y);

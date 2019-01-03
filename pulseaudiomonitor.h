@@ -13,6 +13,7 @@
 #include <QMutex>
 
 #include <QThread>
+#include <atomic>
 
 #define BUFSIZE (1024*1)
 //#define BUFSIZE 4096
@@ -32,6 +33,7 @@ public:
     float m_left[BUFSIZE];
     float m_right[BUFSIZE];
     int currentPos = 0;
+    std::atomic_bool modified;
 
 public:
     void run();
