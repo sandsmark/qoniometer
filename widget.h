@@ -6,6 +6,8 @@
 #include <QMediaPlayer>
 #include <QAudioBuffer>
 
+class QAudioRecorder;
+
 typedef struct {
     float *c0;
     float *c1;
@@ -106,8 +108,9 @@ private slots:
     void processBuffer(QAudioBuffer buffer);
 
 private:
-    QMediaPlayer *m_player;
+    //QMediaPlayer *m_player;
     gmringbuf *m_ringBuffer;
+    QAudioRecorder *m_audioRecorder;
 };
 
 #endif // WIDGET_H

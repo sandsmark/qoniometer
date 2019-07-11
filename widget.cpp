@@ -5,12 +5,13 @@
 #include <QElapsedTimer>
 #include <QMouseEvent>
 #include <QAudioProbe>
+#include <QAudioRecorder>
 #include <QTimer>
 #include <QFileInfo>
 
 Widget::Widget(QWidget *parent)
-    : QOpenGLWidget(parent),
-      m_player(new QMediaPlayer (this))
+    : QOpenGLWidget(parent)
+      //m_player(new QMediaPlayer (this))
 {
     setWindowFlags(Qt::Dialog);
     resize(640, 480);
@@ -18,13 +19,28 @@ Widget::Widget(QWidget *parent)
     const int rate = 48000;
     m_ringBuffer = gmrb_alloc(rate/2);
 
-    QAudioProbe *probe = new QAudioProbe;
-    connect(probe, &QAudioProbe::audioBufferProbed, this, &Widget::processBuffer);
-    probe->setSource(m_player);
+    m_audioRecorder = new QAudioRecorder(this);
+    QAudioEncoderSettings settings = m_audioRecorder->audioSettings();
+    settings.setChannelCount(2);
+    m_audioRecorder->setAudioSettings(settings);
+    qDebug() << m_audioRecorder->audioInputs();
+    //m_audioRecorder->setAudioInput("pulseaudio");
+    qDebug() <<m_audioRecorder->audioInput();
+    qDebug() <<m_audioRecorder->defaultAudioInput();
+    //m_audioRecorder->setAudioInput("default");
 
-    m_player->setMedia(QUrl::fromLocalFile(QFileInfo("./winnar.mp3").absoluteFilePath()));
+    QAudioProbe *probe = new QAudioProbe(this);
+    connect(probe, &QAudioProbe::audioBufferProbed, this, &Widget::processBuffer);
+    probe->setSource(m_audioRecorder);
+    qDebug() << probe->isActive();
+    qDebug() << m_audioRecorder->errorString();
+    qDebug() << m_audioRecorder->state();
+    qDebug() << m_audioRecorder->status();
+    m_audioRecorder->record();
+
+    //m_player->setMedia(QUrl::fromLocalFile(QFileInfo("./winnar.mp3").absoluteFilePath()));
 //    m_player->play();
-    m_player->setVolume(50);
+    //m_player->setVolume(50);
 
     QTimer *repaintTimer = new QTimer(this);
     repaintTimer->setInterval(20);
@@ -73,9 +89,9 @@ void Widget::resizeEvent(QResizeEvent *event)
 
 void Widget::keyPressEvent(QKeyEvent *event)
 {
-    if (event->key() == Qt::Key_Space) {
-        m_player->play();
-    }
+    //if (event->key() == Qt::Key_Space) {
+    //    m_player->play();
+    //}
 }
 
 void Widget::processBuffer(QAudioBuffer buffer)
