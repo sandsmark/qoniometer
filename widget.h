@@ -35,6 +35,7 @@ private:
     PulseAudioMonitor m_monitor;
     Effect m_currentEffect;
     int m_ghost;
+    QImage m_buffer;
 };
 
 #endif // WIDGET_H
