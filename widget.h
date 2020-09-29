@@ -1,12 +1,12 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 
-#include <QOpenGLWidget>
 #include <QMultiMap>
 #include <QDBusAbstractInterface>
 #include "pulseaudiomonitor.h"
 #include <QDBusPendingReply>
 #include <QUrl>
+#include <QWidget>
 
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -52,7 +52,6 @@ private:
     QNetworkAccessManager *m_nam;
 };
 
-//class Widget : public QOpenGLWidget
 class Widget : public QWidget
 {
     Q_OBJECT

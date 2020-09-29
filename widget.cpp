@@ -108,7 +108,6 @@ void Widget::paintEvent(QPaintEvent *)
 
 void Widget::resizeEvent(QResizeEvent *event)
 {
-    //QOpenGLWidget::resizeEvent(event);
     update();
 }
 
