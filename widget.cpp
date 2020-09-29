@@ -16,6 +16,8 @@
 #include <QNetworkReply>
 #include <QMouseEvent>
 #include <QPainterPath>
+#include <QCursor>
+#include <QSocketNotifier>
 
 Widget::Widget(QWidget *parent) :
       m_currentEffect(Out),
@@ -48,7 +50,48 @@ Widget::Widget(QWidget *parent) :
     connect(qApp->desktop(), &QDesktopWidget::resized, this, &Widget::updatePosition);
     connect(m_mediaPlayer, &CoverHandler::coverUpdated, this, &Widget::updatePosition);
     connect(m_mediaPlayer, SIGNAL(started()), m_repaintTimer, SLOT(start()));
-    connect(m_mediaPlayer, SIGNAL(stopped()), m_repaintTimer, SLOT(stop()));
+
+    if (isatty(STDIN_FILENO)) {
+        connect(new QSocketNotifier(STDIN_FILENO, QSocketNotifier::Read, this), &QSocketNotifier::activated,
+                this, [=](QSocketDescriptor, QSocketNotifier::Type) {
+            int key;
+            do {
+                key = getc(stdin);
+                if (key != 27) {
+                    continue;
+                }
+                switch((key = getc(stdin)))  {
+                case '[': {
+                    int dirKey = getc(stdin);
+                    switch(dirKey) {
+                    case 65:
+                        m_ghost = qMin(m_ghost + 10, 255);
+                        break;
+                    case 67:
+                        m_currentEffect = Effect((m_currentEffect + 1) % EffectCount);
+                        break;
+                    case 66:
+                        m_ghost = qMax(m_ghost - 10, 0);
+                        break;
+                    case 68:
+                        m_currentEffect = Effect(m_currentEffect == 0 ? ( EffectCount - 1) : m_currentEffect - 1);
+                        break;
+                    default:
+                        qDebug() << "unknown" << dirKey;
+                        break;
+                    }
+                    break;
+                }
+                case -1: // just a single escape key
+                    qApp->quit();
+                    break;
+                default:
+                    qDebug() << "unknown" << key;
+                    break;
+                }
+            } while(key > 0);
+        });
+    }
 }
 
 Widget::~Widget()

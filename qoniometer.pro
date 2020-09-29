@@ -9,7 +9,6 @@ QT       += core gui multimedia widgets dbus
 TARGET = qoniometer
 TEMPLATE = app
 
-CONFIG += c++11
 CONFIG += optimize_full
 QMAKE_CXXFLAGS += -Wno-deprecated-declarations
 
