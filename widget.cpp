@@ -122,9 +122,10 @@ void Widget::paintEvent(QPaintEvent *)
     painter.setPen(QPen(QColor(0, 0, 0, 64), 3));
 
     const QImage cover = m_mediaPlayer->cover();
-
-    painter.setOpacity(0.3);
-    painter.drawImage(rect(), m_mediaPlayer->cover());
+    if (!cover.isNull()) {
+        painter.setOpacity(0.3);
+        painter.drawImage(rect(), m_mediaPlayer->cover());
+    }
 
     painter.setCompositionMode(QPainter::CompositionMode_Lighten);
     switch(m_currentEffect) {
@@ -393,16 +394,15 @@ void CoverHandler::updateUrl()
     qDebug() << rep.error();
 
     QVariantMap foo = qdbus_cast<QVariantMap>(rep.value());
-    for (const QString &key : foo.keys()) {
-        qDebug() << key << foo[key];
-    }
     QString playbackState = qdbus_cast<QString>(rep.value()["PlaybackStatus"]);
+    qDebug() << "state" << playbackState;
     if (playbackState == "Playing" && !m_playing) {
         m_playing = true;
         emit started();
     } else if (m_playing) {
         m_playing = false;
         emit stopped();
+        return;
     }
 
 
