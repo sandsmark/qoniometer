@@ -73,9 +73,6 @@ protected:
     void resizeEvent(QResizeEvent*) override;
     void keyPressEvent(QKeyEvent *) override;
     void enterEvent(QEvent *) override;
-    void leaveEvent(QEvent *) override;
-    void mousePressEvent(QMouseEvent *e) override;
-    void mouseMoveEvent(QMouseEvent *e) override;
 
 private slots:
     void updatePosition();

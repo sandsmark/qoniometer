@@ -19,14 +19,14 @@
 #include <QCursor>
 #include <QSocketNotifier>
 
-Widget::Widget(QWidget *parent) :
+Widget::Widget(QWidget *) :
       m_currentEffect(Out),
       m_ghost(128),
       m_smoother(1.)
 {
     m_showTimer = new QTimer;
     m_showTimer->setSingleShot(true);
-    m_showTimer->setInterval(1000);
+    m_showTimer->setInterval(100);
     connect(m_showTimer, &QTimer::timeout, this, &Widget::onShow);
 
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus | Qt::BypassWindowManagerHint);
@@ -148,7 +148,7 @@ void Widget::paintEvent(QPaintEvent *)
     }
 }
 
-void Widget::resizeEvent(QResizeEvent *event)
+void Widget::resizeEvent(QResizeEvent *)
 {
     update();
 }
@@ -442,11 +442,13 @@ void Widget::onShow()
         return;
     }
 
-    if (underMouse()) {
+    if (QRect(mapToGlobal(QPoint(0, 0)), size()).contains(QCursor::pos())) {
         hide();
         m_showTimer->start();
         return;
     }
+    m_showTimer->stop();
+    m_repaintTimer->start();
 
     show();
 }
@@ -455,24 +457,5 @@ void Widget::enterEvent(QEvent *)
 {
     hide();
     m_showTimer->start();
-}
-
-void Widget::leaveEvent(QEvent *)
-{
-    setWindowOpacity(1);
-}
-
-void Widget::mouseMoveEvent(QMouseEvent *e)
-{
-    if (m_showTimer->isActive()) {
-        hide();
-        m_showTimer->start();
-    }
-}
-
-void Widget::mousePressEvent(QMouseEvent *e)
-{
-    e->ignore();
-    hide();
-    m_showTimer->start();
+    m_repaintTimer->stop();
 }
