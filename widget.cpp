@@ -11,11 +11,16 @@
 #include <QApplication>
 #include <QDesktopWidget>
 #include "inlinehsv.h"
+#include <QDBusReply>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QMouseEvent>
+#include <QPainterPath>
 
 Widget::Widget(QWidget *parent) :
       m_currentEffect(Out),
-//      m_currentEffect(Dots),
-      m_ghost(128)
+      m_ghost(128),
+      m_smoother(1.)
 {
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus | Qt::WindowTransparentForInput);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -93,51 +98,23 @@ void Widget::doOut()
     QElapsedTimer timer;
     timer.start();
 
-    QPainter painter(this);
+    const int centerX = width() / 2;
+    const int centerY = height() / 2;
 
     //painter.setCompositionMode(QPainter::CompositionMode_Source);
     painter.fillRect(rect(), Qt::transparent);
     //painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
 
-    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-    //painter.setCompositionMode(QPainter::CompositionMode_Difference);
-
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(0, 0, 0, 64), 3));
-
-    const int centerX = 3 * width() / 4;
-    const int centerY = height() / 4;
-    const int scale = qMin(height(), width());
+    const int scale = qMin(height(), width()) / 2.;
     m_monitor.m_mutex.lock();
     const int samplecount = sizeof(m_monitor.m_left)/sizeof(m_monitor.m_left[0]);
-    for (int i=0; i<samplecount; i++) {
-        int posToRead = i + m_monitor.currentPos;
-        posToRead %= samplecount;
-        const float left = m_monitor.m_left[posToRead];
-        const float right = m_monitor.m_right[posToRead];
-
-
-        const float ay = left - right;
-        const float ax = left + right;
-        const float ang = atan2(ay, ax);
-
-        const float x = centerX - ax * scale;
-        const float y = centerY - ay * scale;
-        const float nx = x + cos(ang) * std::hypot(ax, ay) * 100;
-        const float ny = y + sin(ang) * std::hypot(ax, ay) * 100;
-        //painter.setPen(QPen(QColor(255, 255, 255, (pow(ax, 2) + pow(ay, 2)) * 128), 1, Qt::SolidLine, Qt::RoundCap));
-        //painter.setPen(QPen(QColor(255, 255, 255, std::hypot(ax, ay) * 255), 1, Qt::SolidLine, Qt::RoundCap));
-        //painter.setOpacity(std::hypot(x, y) ? std::hypot(x, y) / height() : 0.);
-        if (i > 1) {
-            painter.drawLine(x, y, nx, ny);
-        }
-        //lastX = x;
-        //lastY = y;
-    }
 
     painter.setRenderHint(QPainter::Antialiasing, false);
-    painter.setPen(QPen(QColor(255, 255, 255, 64), 1));
+    painter.setPen(QPen(QColor(255, 255, 255, 128), 1));
+    //painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
+    float lastMaxVal = 1./std::max(m_smoother.lastValue, 0.001);
+    float maxVal = -1;
     for (int i=0; i<samplecount; i++) {
         int posToRead = i + m_monitor.currentPos;
         posToRead %= samplecount;
@@ -149,21 +126,25 @@ void Widget::doOut()
         const float ax = left + right;
         const float ang = atan2(ay, ax);
 
-        const float x = centerX - ax * scale;
-        const float y = centerY - ay * scale;
-        const float nx = x + cos(ang) * std::hypot(ax, ay) * 100;
-        const float ny = y + sin(ang) * std::hypot(ax, ay) * 100;
-        //painter.setPen(QPen(QColor(255, 255, 255, (pow(ax, 2) + pow(ay, 2)) * 128), 1, Qt::SolidLine, Qt::RoundCap));
-        //painter.setPen(QPen(QColor(255, 255, 255, std::hypot(ax, ay) * 255), 1, Qt::SolidLine, Qt::RoundCap));
-        //painter.setOpacity(std::hypot(x, y) ? std::hypot(x, y) / height() : 0.);
+        const float x = centerX - ax * scale / lastMaxVal;
+        const float y = centerY - ay * scale * 2 / lastMaxVal;
+        const float nx = x + cos(ang) * std::hypot(ax, ay) * 20;
+        const float ny = y + sin(ang) * std::hypot(ax, ay) * 20;
+//        painter.setPen(QPen(QColor(255, 255, 255, (pow(ax, 2) + pow(ay, 2)) * 128), 1, Qt::SolidLine, Qt::RoundCap));
+//        painter.setPen(QPen(QColor(255, 255, 255, std::hypot(ax, ay) * 255), 1, Qt::SolidLine, Qt::RoundCap));
+        painter.setOpacity(std::hypot(x, y) ? std::hypot(x, y) / height() : 0.);
         if (i > 1) {
             painter.drawLine(x, y, nx, ny);
         }
+        maxVal = std::max(std::abs(ay), maxVal);
+        maxVal = std::max(std::abs(ax), maxVal);
         //lastX = x;
         //lastY = y;
     }
     m_monitor.m_mutex.unlock();
-
+    if (maxVal > 0) {
+        m_smoother.getSmoothed(1./maxVal);
+    }
 }
 
 void Widget::doDots()
