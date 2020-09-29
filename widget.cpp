@@ -18,23 +18,40 @@
 #include <QPainterPath>
 
 Widget::Widget(QWidget *parent) :
+//      m_currentEffect(Splines),
       m_currentEffect(Out),
       m_ghost(128),
       m_smoother(1.)
 {
-    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus | Qt::WindowTransparentForInput);
+    m_showTimer = new QTimer;
+    m_showTimer->setSingleShot(true);
+    m_showTimer->setInterval(1000);
+    connect(m_showTimer, &QTimer::timeout, this, &Widget::onShow);
+
+    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus | Qt::BypassWindowManagerHint);
     setAttribute(Qt::WA_TranslucentBackground);
-    resize(640, 480);
-    QTimer *repaintTimer = new QTimer(this);
-    repaintTimer->setInterval(50);
+    setAttribute(Qt::WA_X11DoNotAcceptFocus);
+    setAttribute(Qt::WA_TransparentForMouseEvents);
+    resize(150, 150);
+    m_repaintTimer = new QTimer(this);
+    m_repaintTimer->setInterval(50);
     //repaintTimer->setInterval(50);
-    connect(repaintTimer, SIGNAL(timeout()), this, SLOT(update()));
-    repaintTimer->start();
-    updatePosition();
+    connect(m_repaintTimer, SIGNAL(timeout()), this, SLOT(update()));
+    m_repaintTimer->start();
+
+    m_mediaPlayer = new CoverHandler(this);
+    qDebug() << m_mediaPlayer->pictureUrl();
 
     m_monitor.start();
+
+    updatePosition();
+
     connect(qApp->desktop(), &QDesktopWidget::screenCountChanged, this, &Widget::updatePosition);
     connect(qApp->desktop(), &QDesktopWidget::resized, this, &Widget::updatePosition);
+    connect(m_mediaPlayer, &CoverHandler::coverUpdated, this, &Widget::updatePosition);
+    //connect(m_mediaPlayer, &CoverHandler::started, m_repaintTimer, &QTimer::start);
+    connect(m_mediaPlayer, SIGNAL(started()), m_repaintTimer, SLOT(start()));
+    connect(m_mediaPlayer, SIGNAL(stopped()), m_repaintTimer, SLOT(stop()));
 }
 
 Widget::~Widget()
@@ -43,35 +60,74 @@ Widget::~Widget()
 
 void Widget::updatePosition()
 {
-    int offset = qApp->desktop()->availableGeometry(qApp->desktop()->screenCount() - 1).width() - width() - 10;
+    const QRect coverRect = m_mediaPlayer->cover().rect();
+    if (!coverRect.isEmpty() && coverRect.size() != size()) {
+        qDebug() << "Resizing to cover";
+        resize(m_mediaPlayer->cover().size());
+    }
+    //if (m_overlay.size() != size()) {
+    //    m_overlay = QImage(size(), QImage::Format_ARGB32_Premultiplied);
+    //    m_overlay.fill(Qt::transparent);
+    //}
+
+    int offsetX = qApp->desktop()->availableGeometry(qApp->desktop()->screenCount() - 1).width() - width();
     for (int screen = 1; screen < qApp->desktop()->screenCount(); screen++) {
-        offset += qApp->desktop()->availableGeometry(screen).width();
+        offsetX += qApp->desktop()->availableGeometry(screen).width();
     }
 
-    move(offset, 0);
+    int offsetY = qApp->desktop()->availableGeometry(qApp->desktop()->screenCount() - 1).height() - height() - 20;
+    move(offsetX, offsetY);
 }
 
 void Widget::paintEvent(QPaintEvent *)
 {
+    QPainter painter(this);
+    painter.fillRect(rect(), Qt::transparent);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(QColor(0, 0, 0, 64), 3));
+
+    const QImage cover = m_mediaPlayer->cover();
+
+    painter.setOpacity(0.3);
+    painter.drawImage(rect(), m_mediaPlayer->cover());
+
+    painter.setCompositionMode(QPainter::CompositionMode_Lighten);
     switch(m_currentEffect) {
     case Out:
-        doOut();
+        doOut(painter);
         break;
     case Dots:
-        doDots();
+        doDots(painter);
         break;
     case Lines:
-        doLines();
+        doLines(painter);
         break;
     case Splines:
-        doSplines();
+        doSplines(painter);
         break;
     case Colors:
-        doColors();
+        doColors(painter);
         break;
     default:
         break;
     }
+
+    //{
+    //    QPainter painter(this);
+    //    painter.fillRect(rect(), Qt::transparent);
+    //    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    //    painter.setRenderHint(QPainter::Antialiasing);
+    //    painter.setPen(QPen(QColor(0, 0, 0, 64), 3));
+
+    //    const QImage cover = m_mediaPlayer->cover();
+
+    //    painter.setOpacity(0.3);
+    //    painter.drawImage(rect(), m_mediaPlayer->cover());
+    //    painter.setCompositionMode(QPainter::CompositionMode_Lighten);
+    //    painter.drawImage(rect(), m_overlay);
+    //}
+
 }
 
 void Widget::resizeEvent(QResizeEvent *event)
@@ -93,7 +149,7 @@ void Widget::keyPressEvent(QKeyEvent *event)
     }
 }
 
-void Widget::doOut()
+void Widget::doOut(QPainter &painter)
 {
     QElapsedTimer timer;
     timer.start();
@@ -101,9 +157,12 @@ void Widget::doOut()
     const int centerX = width() / 2;
     const int centerY = height() / 2;
 
-    //painter.setCompositionMode(QPainter::CompositionMode_Source);
-    painter.fillRect(rect(), Qt::transparent);
-    //painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
+    //QPainter painter(this);
+    //painter.setCompositionMode(QPainter::CompositionMode_Darken);
+    painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
+    //painter.setRenderHint(QPainter::Antialiasing);
+    //painter.setCompositionMode(QPainter::RasterOp_NotSourceAndNotDestination);
+    //painter.drawImage(QRect(rect().width() - cover.width(), rect().height() - cover.height(), width(), height()), m_mediaPlayer->cover());
 
     const int scale = qMin(height(), width()) / 2.;
     m_monitor.m_mutex.lock();
@@ -147,12 +206,11 @@ void Widget::doOut()
     }
 }
 
-void Widget::doDots()
+void Widget::doDots(QPainter &painter)
 {
     QElapsedTimer timer;
     timer.start();
 
-    QPainter painter(this);
     //QImage newBuf(size(), QImage::Format_ARGB32_Premultiplied);
     //newBuf.fill(Qt::transparent);
     //QPainter painter(&newBuf);
@@ -197,9 +255,8 @@ void Widget::doDots()
 
 }
 
-void Widget::doLines()
+void Widget::doLines(QPainter &painter)
 {
-    QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(QPen(QColor(255, 255, 255 ), 5));
     painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
@@ -237,9 +294,8 @@ void Widget::doLines()
     m_monitor.m_mutex.unlock();
 }
 
-void Widget::doColors()
+void Widget::doColors(QPainter &painter)
 {
-    QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(QPen(QColor(255, 255, 255), 5));
     painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
@@ -305,11 +361,11 @@ void Widget::doColors()
     m_monitor.m_mutex.unlock();
 }
 
-void Widget::doSplines()
+void Widget::doSplines(QPainter &painter)
 {
-    QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(QPen(QColor(255, 255, 255, 192 ), 0.1));
+    //painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
     painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
 
     const int centerX = width() / 2;
@@ -349,4 +405,117 @@ void Widget::doSplines()
     }
     painter.drawPath(path);
     m_monitor.m_mutex.unlock();
+}
+
+CoverHandler::CoverHandler(QObject *parent) :
+    QDBusAbstractInterface("org.mpris.MediaPlayer2.spotify",
+                           "/org/mpris/MediaPlayer2",
+                           "org.freedesktop.DBus.Properties",
+                           QDBusConnection::sessionBus(),
+                           parent)
+{
+    m_nam = new QNetworkAccessManager(this);
+//    m_nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+    m_nam->setRedirectPolicy(QNetworkRequest::UserVerifiedRedirectPolicy);
+    connect(m_nam, &QNetworkAccessManager::finished, this, &CoverHandler::downloadFinished);
+
+
+
+    connect(this, &CoverHandler::PropertiesChanged, this, &CoverHandler::updateUrl);
+    updateUrl();
+}
+
+QUrl CoverHandler::pictureUrl()
+{
+    return QUrl(m_coverUrl);
+}
+
+void CoverHandler::updateUrl()
+{
+    QDBusReply<QVariantMap> rep = call(QStringLiteral("GetAll"), QString("org.mpris.MediaPlayer2.Player"));
+    qDebug() << rep.error();
+
+    QVariantMap foo = qdbus_cast<QVariantMap>(rep.value());
+    for (const QString &key : foo.keys()) {
+        qDebug() << key << foo[key];
+    }
+    QString playbackState = qdbus_cast<QString>(rep.value()["PlaybackStatus"]);
+    if (playbackState == "Playing" && !m_playing) {
+        m_playing = true;
+        emit started();
+    } else if (m_playing) {
+        m_playing = false;
+        emit stopped();
+    }
+
+
+    QUrl artUrl = qdbus_cast<QVariantMap>(rep.value()["Metadata"])["mpris:artUrl"].toString();
+    artUrl.setHost("i.scdn.co");
+    if (artUrl == m_coverUrl) {
+        return;
+    }
+
+    m_coverUrl = artUrl;
+    if (!m_coverUrl.isValid() || m_coverUrl.isEmpty()) {
+        qWarning() << "Invalid cover url";
+        return;
+    }
+    qDebug() << "Downloading" << m_coverUrl;
+    QNetworkReply *reply = m_nam->get(QNetworkRequest(m_coverUrl));
+    connect(reply, &QNetworkReply::redirected, reply, &QNetworkReply::redirectAllowed);
+}
+
+void CoverHandler::onPropertiesChanged()
+{
+    qDebug() << "Playback changed";
+}
+
+void CoverHandler::downloadFinished(QNetworkReply *reply)
+{
+    qDebug() << "Download complete";
+    m_cover = QImage::fromData(reply->readAll());
+    emit coverUpdated();
+
+    reply->deleteLater();
+}
+
+void Widget::onShow()
+{
+    if (isVisible()) {
+        return;
+    }
+
+    if (underMouse()) {
+        hide();
+        m_showTimer->start();
+        return;
+    }
+
+    show();
+}
+
+void Widget::enterEvent(QEvent *)
+{
+    hide();
+    m_showTimer->start();
+}
+
+void Widget::leaveEvent(QEvent *)
+{
+    setWindowOpacity(1);
+}
+
+void Widget::mouseMoveEvent(QMouseEvent *e)
+{
+    if (m_showTimer->isActive()) {
+        hide();
+        m_showTimer->start();
+    }
+}
+
+void Widget::mousePressEvent(QMouseEvent *e)
+{
+    e->ignore();
+    hide();
+    m_showTimer->start();
 }
