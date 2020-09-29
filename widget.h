@@ -78,7 +78,6 @@ protected:
     void mousePressEvent(QMouseEvent *e) override;
     void mouseMoveEvent(QMouseEvent *e) override;
 
-
 private slots:
     void updatePosition();
     void onShow();
