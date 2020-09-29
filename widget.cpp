@@ -35,12 +35,11 @@ Widget::Widget(QWidget *parent) :
     setAttribute(Qt::WA_TransparentForMouseEvents);
     resize(150, 150);
     m_repaintTimer = new QTimer(this);
-    m_repaintTimer->setInterval(50);
+    m_repaintTimer->setInterval(16);
     connect(m_repaintTimer, SIGNAL(timeout()), this, SLOT(update()));
     m_repaintTimer->start();
 
     m_mediaPlayer = new CoverHandler(this);
-    qDebug() << m_mediaPlayer->pictureUrl();
 
     m_monitor.start();
 
