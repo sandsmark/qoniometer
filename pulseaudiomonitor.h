@@ -14,6 +14,8 @@
 
 #include <QThread>
 
+#include <atomic>
+
 #define BUFSIZE (882)
 //#define BUFSIZE (1024*2)
 //#define BUFSIZE 4096
@@ -35,6 +37,8 @@ public:
     std::array<float, BUFSIZE> m_left;
     std::array<float, BUFSIZE> m_right;
     int currentPos = 0;
+
+    std::atomic_bool modified;
 
 public:
     void run();

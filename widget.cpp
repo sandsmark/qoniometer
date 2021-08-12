@@ -116,6 +116,10 @@ void Widget::updatePosition()
 
 void Widget::paintEvent(QPaintEvent *)
 {
+    if (!m_monitor.modified.exchange(false)) {
+        return;
+    }
+
     QPainter painter(this);
     painter.fillRect(rect(), Qt::transparent);
     painter.setRenderHint(QPainter::Antialiasing);

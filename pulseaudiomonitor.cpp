@@ -65,6 +65,7 @@ void PulseAudioMonitor::run()
             currentPos++;
             currentPos %= BUFSIZE;
         }
+        modified = true;
         m_mutex.unlock();
     }
 
