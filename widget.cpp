@@ -20,7 +20,7 @@
 #include <QSocketNotifier>
 
 Widget::Widget(QWidget *) :
-      m_currentEffect(Out),
+      m_currentEffect(Splines),
       m_ghost(128),
       m_smoother(1.)
 {
@@ -33,7 +33,7 @@ Widget::Widget(QWidget *) :
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_X11DoNotAcceptFocus);
     setAttribute(Qt::WA_TransparentForMouseEvents);
-    resize(150, 150);
+    resize(400, 400);
     m_repaintTimer = new QTimer(this);
     m_repaintTimer->setInterval(16);
     connect(m_repaintTimer, SIGNAL(timeout()), this, SLOT(update()));
@@ -326,17 +326,18 @@ void Widget::doColors(QPainter &painter)
 void Widget::doSplines(QPainter &painter)
 {
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(255, 255, 255, 192 ), 0.1));
+    painter.setPen(QPen(QColor(255, 255, 255, m_ghost ), 0.5));
     painter.fillRect(rect(), QColor(0, 0, 0, m_ghost));
 
     const int centerX = width() / 2;
     const int centerY = height() / 2;
-    const int scale = qMin(height(), width());
+    const int scale = qMin(height(), width()) * 2;
     m_monitor.m_mutex.lock();
     QPainterPath path;
     const int samplecount = sizeof(m_monitor.m_left)/sizeof(m_monitor.m_left[0]);
 
-    for (int i=1; i<samplecount; i+=2) {
+    path.moveTo(centerX, centerY);
+    for (int i=1; i<samplecount; i++) {
         const float left = m_monitor.m_left[i];
         const float right = m_monitor.m_right[i];
         const float leftPrev = m_monitor.m_left[i-1];
@@ -353,14 +354,14 @@ void Widget::doSplines(QPainter &painter)
         const float xPrev = centerX - axPrev * scale;
         const float yPrev = centerY - ayPrev * scale;
 
-        const float halfPrevX = (x - xPrev) / 2. + xPrev;
-        const float halfPrevY = (y - yPrev) / 2. + yPrev;
+        const float halfPrevX = (x + xPrev)/2.;//(x - xPrev) / 2. + xPrev;
+        const float halfPrevY = (y + yPrev)/2.;//(y - yPrev) / 2. + yPrev;
 
-        if (i < 2) {
-            path.moveTo(x, y);
-        } else {
+        //if (i < 2) {
+        //    path.moveTo(x, y);
+        //} else {
             path.quadTo(xPrev, yPrev, halfPrevX, halfPrevY);
-        }
+        //}
     }
     painter.drawPath(path);
     m_monitor.m_mutex.unlock();
